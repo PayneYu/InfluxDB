@@ -1,7 +1,5 @@
 package com.payne.controller;
 
-import org.influxdb.InfluxDB;
-import org.influxdb.InfluxDBFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.LinkedMultiValueMap;
@@ -23,12 +21,22 @@ public class DatabaseController {
 	
 	@GetMapping("/add")
 	public Object createDatabase(){
-		InfluxDB influxDB = InfluxDBFactory.connect(infulxUrl);
         String url=infulxUrl + "/query";
+        //write?db=mydb1
         MultiValueMap<String,String> postParameter=new LinkedMultiValueMap<String,String>();
         postParameter.add("q","CREATE DATABASE mydb1");
         Object result = restTemplate.postForObject(url,postParameter,Object.class);
         return result;
     }
+
+	@GetMapping("/query")
+	public Object query(){
+		String url="HTTP://localhost:8086/query";
+		MultiValueMap<String,String> postParameter=new LinkedMultiValueMap<String,String>();
+		postParameter.add("db","my_test_influx");
+		postParameter.add("q","SELECT * FROM cpu");
+		Object result = restTemplate.postForObject(url,postParameter,Object.class);
+		return result;
+}
 
 }
