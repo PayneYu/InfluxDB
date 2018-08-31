@@ -20,10 +20,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 @RestController
@@ -32,6 +29,21 @@ public class CpuController {
 
     @Value("${spring.influx.url}")
     private String infulxUrl;
+
+    @GetMapping("/count")
+    public Object count() {
+        InfluxDB influxDB = InfluxDBFactory.connect(infulxUrl);
+        Query query = new Query("SELECT MEAN(*) FROM cpu", "my_test_influx");
+        QueryResult queryResult = influxDB.query(query);
+        List<QueryResult.Result> results = queryResult.getResults();
+        for (QueryResult.Result result : results) {
+            for (QueryResult.Series ser : result.getSeries()) {
+                List<List<Object>> values = ser.getValues();
+                return values.get(0).get(1);
+            }
+        }
+        return 0;
+    }
 
     @GetMapping("/query")
     public List<Cpu> query(){
