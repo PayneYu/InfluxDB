@@ -1,5 +1,6 @@
 package com.payne.entity;
 
+import org.apache.commons.lang3.StringUtils;
 import org.influxdb.annotation.Column;
 import org.influxdb.annotation.Measurement;
 
@@ -74,9 +75,11 @@ public class Cpu {
     }
 
     public String getLocalDateTime() {
-        LocalDateTime temp = LocalDateTime.ofInstant(Instant.parse(getTime()), ZoneId.systemDefault());
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss.SSS");
-        localDateTime = temp.format(formatter);
+        if(StringUtils.isNotBlank(getTime())){
+            LocalDateTime temp = LocalDateTime.ofInstant(Instant.parse(getTime()), ZoneId.systemDefault());
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss.SSS");
+            localDateTime = temp.format(formatter);
+        }
         return localDateTime;
     }
 

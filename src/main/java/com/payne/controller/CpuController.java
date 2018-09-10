@@ -1,6 +1,7 @@
 package com.payne.controller;
 
 import com.payne.entity.Cpu;
+import com.payne.service.CpuService;
 import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBFactory;
 import org.influxdb.annotation.Column;
@@ -10,6 +11,8 @@ import org.influxdb.dto.Point;
 import org.influxdb.dto.Query;
 import org.influxdb.dto.QueryResult;
 import org.influxdb.impl.InfluxDBResultMapper;
+import org.springframework.beans.BeanWrapperImpl;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,6 +32,9 @@ public class CpuController {
 
     @Value("${spring.influx.url}")
     private String infulxUrl;
+
+    @Autowired
+    private CpuService cpuService;
 
     @GetMapping("/count")
     public Object count() {
@@ -66,7 +72,7 @@ public class CpuController {
     @GetMapping("/insert/{region}")
     public List<Cpu> insert(@PathVariable String region){
         InfluxDB influxDB = InfluxDBFactory.connect(infulxUrl);
-        insertData(region);
+        cpuService.insertData(region);
         List<Cpu> list = queryByRegion(region);
         return list;
     }
@@ -79,27 +85,32 @@ public class CpuController {
                 .bind("region", region)
                 .create();
         QueryResult queryResult = influxDB.query(query);
-        InfluxDBResultMapper resultMapper = new InfluxDBResultMapper();
-        List<Cpu> list = resultMapper.toPOJO(queryResult, Cpu.class);
+        List<Cpu> list = new ArrayList<Cpu>();
+        for (QueryResult.Result result : queryResult.getResults()) {
+            List<QueryResult.Series> series= result.getSeries();
+            for (QueryResult.Series serie : result.getSeries()) {
+                List<List<Object>> values = serie.getValues();
+                List<String> columns = serie.getColumns();
+                list.addAll(getQueryData(columns, values));
+            }
+        }
         return list;
     }
 
-    private void insertData(String region){
-        //写入数据
-        InfluxDB influxDB = InfluxDBFactory.connect(infulxUrl);
-        influxDB.setRetentionPolicy("2_hours");//数据保存测试，by default 用默认策略
-        influxDB.setDatabase("my_test_influx");
-        Point.Builder builder = Point.measurement("cpu");
-        Long currentTime = System.currentTimeMillis();
-        builder.time(currentTime, TimeUnit.MILLISECONDS);
-        builder.addField("idle", 90.0);
-        builder.addField("hostname", "server1");
-        builder.tag("region", region);
-        builder.addField("happydevop", false);
-        Point point = builder.build();
-        influxDB.write(point);
+    private List<Cpu> getQueryData(List<String> columns, List<List<Object>> values){
+        List<Cpu> list = new ArrayList<Cpu>();
+        for (List<Object> objList : values) {
+            Cpu ou = new Cpu();
+            BeanWrapperImpl bean = new BeanWrapperImpl(ou);
+            for(int i=1;i< objList.size(); i++){
+                String propertyName = columns.get(i);//字段名
+                Object value = objList.get(i);//相应字段值
+                bean.setPropertyValue(propertyName, value);
+            }
+            list.add(ou);
+        }
+        return list;
     }
-
     @GetMapping("/test")
     public void test() throws IllegalAccessException {
         Cpu cpu = new Cpu();
